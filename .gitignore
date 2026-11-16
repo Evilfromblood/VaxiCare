@@ -1,0 +1,19 @@
+# Bytecode and build output
+out/
+*.class
+
+# IDE configurations
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Temporary files
+sources.txt
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db
