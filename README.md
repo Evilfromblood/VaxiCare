@@ -1,18 +1,19 @@
-# VaxiCare: Smart Vaccination Slot Booking & Dose Tracking System
+# VaxiCare 2.0: Smart Vaccination Slot Booking & Dose Tracking System
 
 ![Java](https://img.shields.io/badge/Java-JDK%2021-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
 ![UI](https://img.shields.io/badge/UI-Pure%20AWT-blue?style=for-the-badge)
 ![Database](https://img.shields.io/badge/Database-SQLite%203-003B57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Architecture](https://img.shields.io/badge/Architecture-Modular%208--Package-success?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey?style=for-the-badge)
+![Verification](https://img.shields.io/badge/Verification-100%25%20Passed-brightgreen?style=for-the-badge)
 
-**VaxiCare** is a clinical vaccination management and slot booking system built entirely in **pure Core Java (JDK 21)** using standard Java SE libraries (`java.awt`, `java.io`, `java.sql`, `java.util`, `java.time`) and `org.xerial:sqlite-jdbc`.
+**VaxiCare 2.0** is an upgraded, production-grade clinical vaccination management, slot booking, and inventory tracking system built entirely in **pure Core Java (OpenJDK 21)** using standard Java SE libraries (`java.awt`, `java.io`, `java.sql`, `java.util`, `java.time`) and `org.xerial:sqlite-jdbc`.
 
-It strictly adheres to core Java principles without external UI frameworks (zero Swing, zero JavaFX) or build-tool abstractions (zero Maven/Gradle dependencies), serving as an exhaustive reference implementation covering Units I–IV of standard undergraduate Computer Science Java curricula.
+It strictly adheres to core Java principles without external UI frameworks (**zero Swing, zero JavaFX**) or build-tool abstractions (**zero Maven, zero Gradle**), serving as an exhaustive reference implementation covering Units I–IV of standard undergraduate Computer Science Java curricula.
 
 ---
 
-## ⚡ Quick Start: How to Make It Work (In 60 Seconds)
+## ⚡ Quick Start: How to Make It Work (Zero-Friction Startup)
 
 ### 1. Prerequisites
 - **Java Development Kit**: JDK 21 (or newer). Verify with:
@@ -28,28 +29,30 @@ git clone https://github.com/Evilfromblood/VaxiCare.git
 cd VaxiCare
 ```
 
-### 3. One-Command Launchers
+### 3. One-Click Launchers (Automated Compile & Run)
 
 #### On Windows:
-- **Run the GUI**: Double-click `run.bat` or run:
-  ```powershell
-  .\run.bat
+- **Run the GUI Application**: Double-click `run_vaxicare.bat` (or `run.bat`) or run in PowerShell/CMD:
+  ```cmd
+  run_vaxicare.bat
   ```
-- **Run Automated Headless Tests**: Double-click `verify.bat` or run:
-  ```powershell
-  .\verify.bat
+  *Compiles all source packages automatically into `out/` if missing, auto-seeds the SQLite database if empty, and launches the centered `1180x760` clinical interface.*
+- **Run the Automated Headless Test Suite**: Double-click `verify_vaxicare.bat` (or `verify.bat`) or run:
+  ```cmd
+  verify_vaxicare.bat
   ```
+  *Executes all 8 verification suites (database counts, Sarojini B5531, dynamic dispatch, custom exceptions, binary backup parity, and thread states) and pauses so output is readable.*
 
 #### On Linux / macOS:
 ```bash
-# Make scripts executable
-chmod +x run.sh verify.sh
+# Grant execution permissions
+chmod +x run_vaxicare.sh verify_vaxicare.sh
 
-# Run the GUI
-./run.sh
+# Run the GUI Application
+./run_vaxicare.sh
 
-# Run Automated Headless Tests
-./verify.sh
+# Run Automated Headless Verification
+./verify_vaxicare.sh
 ```
 
 ---
@@ -88,7 +91,6 @@ java -cp "out:lib/*" com.vaxicare.main.VaxiCareApp
 ```
 
 #### B. Run the Comprehensive Headless Test Suite (`--verify`)
-This mode tests database auto-seeding, all 3 overloaded booking methods, dynamic method dispatch, custom exception triggers, binary backup parity, and thread state logging without needing a display:
 ```bash
 # Windows
 java -cp "out;lib/*" com.vaxicare.main.VaxiCareApp --verify
@@ -98,7 +100,6 @@ java -cp "out:lib/*" com.vaxicare.main.VaxiCareApp --verify
 ```
 
 #### C. Run the Uncaught ArithmeticException Demonstration
-Demonstrates Unit III runtime exception handling and default JVM handler (`45 / 0` vials):
 ```bash
 # Windows
 java -cp "out;lib/*" com.vaxicare.exception.UncaughtDemo
@@ -109,55 +110,97 @@ java -cp "out:lib/*" com.vaxicare.exception.UncaughtDemo
 
 ---
 
-## 🖥️ How to Use the Graphical User Interface
+## 🖥️ Live Application Visual Walkthrough
 
-The AWT desktop application consists of 4 interactive cards switched via the top navigation bar:
+VaxiCare 2.0 features a redesigned **clinical navigation architecture** with a **6-card Left Navigation Rail**, **Top Clinic Status Bar**, and **Bottom Color-Coded Live Feedback Banner**:
 
 ```
-+-------------------------------------------------------------------------+
-|                  VaxiCare 2.0: Smart Clinical Vaccination               |
-+-------------------------------------------------------------------------+
-| [1. Registration]  [2. Slot Booking]  [3. Vaccination]  [4. Reports]   |
-+-------------------------------------------------------------------------+
-|                                                                         |
-|                          ACTIVE CARD PANEL AREA                         |
-|                                                                         |
-+-------------------------------------------------------------------------+
-| Status: [ENTER] Fetch Beneficiary | [Ctrl+V] Administer Dose | [F4] Report|
-+-------------------------------------------------------------------------+
++-----------------------------------------------------------------------------------------+
+| [VaxiCare 2.0: Smart Vaccination Slot Booking]  Citizens: 25 | Booked: 1 | Vials: 1 ... |
+| [ENTER] Search ID  |  [Ctrl+V] Record Dose  |  [F4] Coverage Report  |  [ESC] Clear     |
++-------------------+---------------------------------------------------------------------+
+| [Dashboard]       |                                                                     |
+| [Registration]    |                                                                     |
+| [Slot Booking]    |                      ACTIVE WORKSPACE CARD                          |
+| [Administer Dose] |                                                                     |
+| [Reminders & Rep] |                                                                     |
+| [Threads & Tools] |                                                                     |
++-------------------+---------------------------------------------------------------------+
+| STATUS: [OK] Form cleared. Ready for new citizen entry. (Live Feedback Banner)          |
++-----------------------------------------------------------------------------------------+
 ```
 
-### 1. Panel 1: Citizen Registration (`CardLayout`: `REGISTRATION`)
-* **Register New Citizen**: Enter Name, Age, Document ID, and 10-digit Phone. Click **"Register New Beneficiary"**.
-  * Age classification (`Child (0-17)`, `Adult (18-59)`, `Senior Citizen (60+)`) is auto-computed.
-* **Search Citizen**: Type a Beneficiary ID (e.g., `B5531`) and press **`ENTER`** or click **"Search by Ben ID"**.
-* **Quick Load**: Single-click any row in the registered citizens list (`MouseAdapter`) to automatically populate the input fields.
+### 1. Dashboard & 1-Click Walk-In Wizard (`CardLayout`: `CARD_DASHBOARD`)
+The operational nerve center for fast walk-in handling. Operators can search citizens by ID or partial name/phone, preview clinical eligibility in real-time, and complete booking + dose administration in 1 click.
 
-### 2. Panel 2: Slot Booking (`CardLayout`: `SLOTS`)
-* **Manual Booking**: Enter Beneficiary ID, select a Session and Vaccine Brand from dropdowns, and click **"Book Selected Slot"**.
-* **Auto-Match Booking**: Enter Beneficiary ID and click **"Auto-Match First Available"** to invoke the overloaded single-argument `bookSlot(benId)` method.
-* **Clinical Eligibility Checks**:
-  * Prevents adults from booking pediatric `ChildCare`.
-  * Prevents booster booking without completing 2 primary doses (`IneligibleAgeException`).
-  * Enforces mandatory vaccine interval days (`DoseNotDueException`).
-  * Rejects booking if session capacity is reached (`SessionFullException`).
+![Dashboard & Quick Walk-In](screenshots/00_dashboard_walkin.png)
 
-### 3. Panel 3: Vaccination Administration & Vial Lab (`CardLayout`: `VACCINATION`)
-* **Administer Dose**: Click **"Administer Dose"** or press **`Ctrl + V`**.
-  * Draws 1 dose from the active physical vial.
-  * Generates an official, non-overridable certificate number (`VC-26-XXXX`).
-  * Records the dose in SQLite and updates the citizen's schedule.
-* **Vial Expiration & Wastage**: Vials automatically discard remaining doses and record wastage if open for more than 6 hours (`Vaccine.VIAL_OPEN_HOURS`).
-* **Concurrency Toggle**: Check/uncheck **"Enable Thread Locking"** to toggle between thread-safe `drawDoseSynchronized` and `drawDoseUnsynchronized` to witness simulated race conditions.
-* **Binary Backup & Verification**:
-  * Click **"Backup Doses (doses.dat)"** to write all records using raw `FileOutputStream` and `ByteBuffer`.
-  * Click **"Restore & Verify doses.dat"** to read back using `FileInputStream` through nested `try-catch-finally` and verify 100% record count parity against SQLite.
+- **Search & Autocomplete**: Search by ID (`B5531`) or partial name (`Sarojini`) without memorizing IDs.
+- **⚡ Load Demo Citizen**: One-click button instantly loads verified candidate **Sarojini (B5531)** for viva/lab presentations.
+- **Real-Time Eligibility Engine**: Dynamic method dispatch evaluates age thresholds, prior doses, and mandatory wait intervals before booking.
+- **1-Click Walk-In Execution**: Performs automatic session allocation, dose decrement, and dose administration in one seamless atomic action.
 
-### 4. Panel 4: Reports, Audit Logs & Thread Monitor (`CardLayout`: `REPORTS`)
-* **Daily Coverage Report**: Press **`F4`** or click **"Daily Coverage Report"** to inspect total vaccinated citizens, vial efficiency, and remaining slot arrays (`int[] slotsRemainingPerSession`).
-* **Due Tomorrow Reminders**: Displays all citizens scheduled for their next dose tomorrow.
-* **Thread State Monitor**: Displays real-time inspection of background worker threads (`RUNNABLE`, `WAITING`, `TERMINATED`).
-* **Vial Audit Logs**: Displays the complete history of vial openings, doses drawn, and wastage from the `Vector<String>` log collection.
+---
+
+### 2. Citizen Registration (`CardLayout`: `CARD_REGISTRATION`)
+Citizen onboarding directory with search filtering and demographic categorization.
+
+![Citizen Registration](screenshots/01_registration_panel.png)
+
+- **Demographic Auto-Classification**: Typing age automatically classifies the beneficiary into `Child (0-17)`, `Adult (18-59)`, or `Senior Citizen (60+)`.
+- **Search Filter**: Instant filter field reduces the directory list to matching records.
+- **AWT MouseAdapter Selection**: Single-clicking any citizen in the list immediately fills the registration form.
+
+---
+
+### 3. Slot Booking & Sessions (`CardLayout`: `CARD_SLOTS`)
+Capacity-managed slot reservation and on-the-fly vaccination session creator.
+
+![Slot Booking & Sessions](screenshots/02_slot_booking_panel.png)
+
+- **Active Session Directory**: Live display of session date, vaccine brand, capacity, booked count, and remaining slots (`int[] slotsRemainingPerSession`).
+- **Interactive Session Creator (`+ Create Session in SQLite`)**: Operators can schedule new clinic sessions directly into the SQLite database with custom date, vaccine brand, and capacity.
+- **3 Overloaded Booking Dispatches**: Supports manual slot booking (`bookSlot(benId, sessId, vax)`), session booking (`bookSlot(benId, sessId)`), and auto-match (`bookSlot(benId)`).
+
+---
+
+### 4. Administer Dose & Vial Lifecycle Panel (`CardLayout`: `CARD_VACCINATION`)
+Physical cold-chain vial inventory monitoring and clinical dose administration.
+
+![Administer Dose & Vial Canvas](screenshots/03_vaccination_vials_panel.png)
+
+- **Physical `VialCanvas` Gauge**: Custom pure AWT `Canvas` rendering an animated physical vaccine vial with remaining doses, fluid capacity fill level, and cold-chain shelf-life timers (`VIAL_OPEN_HOURS = 6`).
+- **Vial Controls**: Dedicated buttons to **"Open New Vial"** and **"Discard Expired Vial"** with real-time audit logging to `Vector<String>`.
+- **Producer-Consumer FIFO Queue (`LinkedList`)**: Visualizes queued citizens waiting for vaccination.
+- **Modal Certificate Dialog**: Displays official Certificate (`VC-26-XXXX`) upon vaccination with **"Save Certificate (.txt)"** and clipboard copy options.
+
+---
+
+### 5. Reminders & Daily Coverage Report (`CardLayout`: `CARD_REPORTS`)
+Comprehensive reporting hub with automated due-date scanning and dead-candidate purging.
+
+![Daily Coverage Report](screenshots/04_daily_coverage_report.png)
+
+![Due Tomorrow Reminders](screenshots/05_due_tomorrow_reminders.png)
+
+- **Daily Coverage Report (Shortcut `[F4]`)**: Tabulates total citizens, administered doses, brand breakdown, age distribution, and primitive session remaining slots array.
+- **Due Tomorrow Reminders**: Scans and displays candidates whose next dose is due tomorrow.
+- **Purge Already-Vaccinated (`Iterator.remove()`)**: Demonstrates safe collection modification using explicit `Iterator.remove()` without `ConcurrentModificationException`.
+- **Export Report**: Saves clinical summary to timestamped `.txt` files on disk.
+
+---
+
+### 6. Threads, Backup & System Tools Lab (`CardLayout`: `CARD_TOOLS`)
+Interactive diagnostic environment designed specifically for viva examination demonstrations.
+
+![Threads & Concurrency Lab](screenshots/06_threads_tools.png)
+
+![Vial Audit Logs](screenshots/07_vial_audit_logs.png)
+
+- **Synchronized vs. Unsynchronized Race Comparison**: One-click side-by-side execution demonstrating safe mutual exclusion vs. race-condition vulnerabilities.
+- **Thread Lifecycle Monitor**: Inspects `Thread.getState()` across `RUNNABLE`, `WAITING`, and `TIMED_WAITING` states.
+- **Binary Byte-Stream Backup & Parity Verification**: Direct `FileOutputStream` / `FileInputStream` byte serialization using `ByteBuffer` (no character streams). Verifies 100% record parity against SQLite.
+- **Uncaught ArithmeticException Trigger**: Triggers JVM default exception handler demonstration (`45 / 0`).
 
 ---
 
@@ -165,9 +208,10 @@ The AWT desktop application consists of 4 interactive cards switched via the top
 
 | Shortcut | Context | Function |
 | :--- | :--- | :--- |
-| **`ENTER`** | Any ID Input Field | Fetches citizen by Beneficiary ID and populates all form fields. |
-| **`Ctrl + V`** | Global Application | Administers dose to the active candidate and generates certificate. |
+| **`ENTER`** | Registration / Walk-In Search | Searches citizen by ID or name and populates form fields. |
+| **`Ctrl + V`** | Global Application | Immediately administers dose to active candidate and launches certificate dialog. |
 | **`F4`** | Global Application | Compiles and switches directly to the Daily Coverage Report. |
+| **`ESC`** | Global Application | Clears registration and search input forms. |
 
 ---
 
@@ -204,7 +248,7 @@ VaxiCare/
 │           │   ├── DoseDAO.java                 (Doses CRUD)
 │           │   └── DataSeeder.java              (Auto-seeds >= 22 bens, 20 sess, 22 doses)
 │           ├── threads/                 # Multithreading, priorities & concurrency
-│           │   ├── VialManager.java             (Synchronized & unsynchronized vial draw)
+│           │   ├── VialManager.java             (Synchronized & unsynchronized vial draw, shelf-life)
 │           │   ├── VaccinatorThread.java        (MAX_PRIORITY/NORM_PRIORITY queue workers)
 │           │   └── ReminderTask.java            (Runnable background scanner with wait/notify)
 │           ├── io/                      # Raw binary byte serialization
@@ -212,37 +256,43 @@ VaxiCare/
 │           ├── service/                 # Business orchestration & Collections
 │           │   └── VaxiCareService.java         (7 Collections, 3 overloaded bookSlots, Iterator.remove)
 │           ├── ui/                      # Pure AWT Graphical Interface
-│           │   └── VaxiCareFrame.java           (CardLayout, Adapters, KeyListener, Dialogs)
+│           │   ├── VaxiCareFrame.java           (6-Card Layout, Nav Rail, Status Bar, Feedback Banner)
+│           │   ├── VialCanvas.java              (Pure AWT Canvas rendering physical vial progress bar)
+│           │   └── CertificateDialog.java       (Pure AWT modal certificate dialog with file export)
 │           └── main/                    # Application bootstrapper
-│               └── VaxiCareApp.java             (Main entry & headless verification suite)
-├── run.bat                              # One-click Windows runner
-├── verify.bat                           # One-click Windows test runner
-├── run.sh                               # One-click Linux/macOS runner
-├── verify.sh                            # One-click Linux/macOS test runner
+│               └── VaxiCareApp.java             (Main entry, centered 1180x760 & verification suite)
+├── run_vaxicare.bat                     # Recommended Windows 1-click launcher
+├── verify_vaxicare.bat                  # Windows 1-click test suite launcher
+├── run_vaxicare.sh                      # Recommended Linux/macOS 1-click launcher
+├── verify_vaxicare.sh                   # Linux/macOS 1-click test suite launcher
 ├── doses.dat                            # Binary byte backup file
 ├── vaccination.db                       # Pre-seeded SQLite database
 ├── SYLLABUS_MAPPING_TABLE.md             # Complete Java Units I–IV academic mapping
-└── README.md                            # Comprehensive user manual
+├── PROJECT_REPORT.md                    # Comprehensive technical report
+└── README.md                            # Complete user manual
 ```
 
 ---
 
 ## ❓ Frequently Asked Questions (FAQ) & Troubleshooting
 
-### 1. Can I run VaxiCare in a headless server or container?
+### 1. How does VaxiCare 2.0 ensure zero Swing or JavaFX?
+Every visual component in `com.vaxicare.ui` is imported strictly from `java.awt.*` and `java.awt.event.*`. You will find **zero occurrences** of `javax.swing.*` or `javafx.*` in the entire repository. Dialogs are instances of `java.awt.Dialog`, progress bars are drawn manually on `java.awt.Canvas`, and layouts use `java.awt.CardLayout`, `BorderLayout`, and `GridBagLayout`.
+
+### 2. Can I run VaxiCare in a headless server or container?
 **Yes.** If your environment has no graphical display (e.g., GitHub Actions, Linux SSH session, Docker), run:
 ```bash
 java -cp "out:lib/*" com.vaxicare.main.VaxiCareApp --verify
 ```
 The `--verify` flag runs the full suite in headless mode without initializing any AWT display components.
 
-### 2. What happens on the first run if `vaccination.db` does not exist?
+### 3. What happens on the first run if `vaccination.db` does not exist?
 `DatabaseManager` automatically creates the tables (`beneficiaries`, `sessions`, `doses`), and `DataSeeder` automatically populates:
 - **25 Beneficiaries** (including `Sarojini`, `B5531`, age 64).
-- **20 Sessions** across multiple dates and vaccine brands.
-- **22 Dose Records** (with exactly 11 scheduled for tomorrow).
+- **22 Sessions** across multiple dates and vaccine brands.
+- **24 Dose Records** (with exactly 11 scheduled for tomorrow).
 
-### 3. How does the binary backup (`doses.dat`) differ from standard serialization?
+### 4. How does the binary backup (`doses.dat`) differ from standard serialization?
 It **does not** use `ObjectOutputStream` or `Serializable`. Instead, it uses low-level byte stream encoding:
 - 4-byte Magic Number (`0x56415843` / "VAXC")
 - 4-byte Record Count

@@ -144,4 +144,49 @@ public class VialManager {
     public List<String> getVialLogs() {
         return vialLogs;
     }
+
+    public synchronized void openNewVialManually(String threadName) {
+        if (dosesRemainingInCurrentVial > 0) {
+            dosesWasted += dosesRemainingInCurrentVial;
+            vialLogs.add(String.format("[%s] [%s] Previous vial #%d discarded with %d unused doses.",
+                    LocalTime.now(), threadName, vialsOpened, dosesRemainingInCurrentVial));
+        }
+        vialsOpened++;
+        dosesRemainingInCurrentVial = DOSES_PER_VIAL;
+        vialOpenedTimeMillis = System.currentTimeMillis();
+        vialLogs.add(String.format("[%s] [%s] Manually opened new vial #%d (%d doses loaded).",
+                LocalTime.now(), threadName, vialsOpened, DOSES_PER_VIAL));
+    }
+
+    public synchronized void discardCurrentVial(String threadName) {
+        if (dosesRemainingInCurrentVial > 0) {
+            dosesWasted += dosesRemainingInCurrentVial;
+            vialLogs.add(String.format("[%s] [%s] Vial #%d manually discarded. %d doses marked wasted.",
+                    LocalTime.now(), threadName, vialsOpened, dosesRemainingInCurrentVial));
+            dosesRemainingInCurrentVial = 0;
+            vialOpenedTimeMillis = 0;
+        } else {
+            vialLogs.add(String.format("[%s] [%s] No active vial to discard.", LocalTime.now(), threadName));
+        }
+    }
+
+    public long getVialOpenedTimeMillis() {
+        return vialOpenedTimeMillis;
+    }
+
+    public static int getDosesPerVial() {
+        return DOSES_PER_VIAL;
+    }
+
+    public synchronized long getRemainingShelfLifeMinutes() {
+        if (vialOpenedTimeMillis <= 0 || dosesRemainingInCurrentVial <= 0) return 0;
+        long elapsed = System.currentTimeMillis() - vialOpenedTimeMillis;
+        long remaining = EXPIRY_MILLIS - elapsed;
+        return Math.max(0, remaining / (60 * 1000));
+    }
+
+    public synchronized long getElapsedMinutes() {
+        if (vialOpenedTimeMillis <= 0 || dosesRemainingInCurrentVial <= 0) return 0;
+        return (System.currentTimeMillis() - vialOpenedTimeMillis) / (60 * 1000);
+    }
 }

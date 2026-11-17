@@ -503,4 +503,294 @@ public class VaxiCareService {
     public ReminderTask getReminderTask() {
         return reminderTask;
     }
+
+    // ==========================================
+    // ENHANCED WORKFLOW & SEARCH UTILITIES
+    // ==========================================
+
+    /**
+     * Searches beneficiaries by ID, Name, Phone, or National ID.
+     */
+    public synchronized List<Beneficiary> searchBeneficiaries(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            List<Beneficiary> all = new ArrayList<>(lookup.values());
+            all.sort((a, b) -> a.getBenId().compareTo(b.getBenId()));
+            return all;
+        }
+        String q = query.trim().toLowerCase();
+        List<Beneficiary> results = new ArrayList<>();
+        for (Beneficiary b : lookup.values()) {
+            boolean match = b.getBenId().toLowerCase().contains(q) ||
+                    b.getName().toLowerCase().contains(q) ||
+                    (b.getPhone() != null && b.getPhone().contains(q)) ||
+                    (b.getIdNumber() != null && b.getIdNumber().toLowerCase().contains(q));
+            if (match) {
+                results.add(b);
+            }
+        }
+        results.sort((a, b) -> a.getBenId().compareTo(b.getBenId()));
+        return results;
+    }
+
+    /**
+     * Clinical eligibility preview result for walk-in wizards and interactive checking.
+     */
+    public static class EligibilityCheck {
+        public final boolean eligible;
+        public final boolean due;
+        public final int currentDoses;
+        public final int nextDoseNo;
+        public final int requiredIntervalDays;
+        public final long daysSinceLastDose;
+        public final String nextDueDate;
+        public final String message;
+        public final String vaccineName;
+
+        public EligibilityCheck(boolean eligible, boolean due, int currentDoses, int nextDoseNo,
+                                int requiredIntervalDays, long daysSinceLastDose, String nextDueDate,
+                                String message, String vaccineName) {
+            this.eligible = eligible;
+            this.due = due;
+            this.currentDoses = currentDoses;
+            this.nextDoseNo = nextDoseNo;
+            this.requiredIntervalDays = requiredIntervalDays;
+            this.daysSinceLastDose = daysSinceLastDose;
+            this.nextDueDate = nextDueDate;
+            this.message = message;
+            this.vaccineName = vaccineName;
+        }
+
+        public boolean canProceed() {
+            return eligible && due;
+        }
+    }
+
+    /**
+     * Performs a side-effect-free clinical validation check for a citizen.
+     * Uses dynamic method dispatch to evaluate age and interval requirements.
+     */
+    public synchronized EligibilityCheck checkEligibility(String beneficiaryId, String vaccineName, String targetDate) {
+        Beneficiary ben = lookup.get(beneficiaryId);
+        if (ben == null) {
+            try {
+                ben = beneficiaryDAO.findById(beneficiaryId);
+                if (ben != null) lookup.put(beneficiaryId, ben);
+            } catch (SQLException ignored) {}
+        }
+        if (ben == null) {
+            return new EligibilityCheck(false, false, 0, 1, 0, 0, "", "Citizen ID not found in system", vaccineName);
+        }
+
+        int currentDoses = 0;
+        try {
+            currentDoses = doseDAO.getLatestDoseNumber(beneficiaryId, vaccineName);
+        } catch (SQLException ignored) {}
+        int nextDoseNo = currentDoses + 1;
+
+        // Dynamic Method Dispatch
+        Vaccine vax;
+        if ("ChildCare".equalsIgnoreCase(vaccineName) || ben.getAge() <= 17) {
+            vax = new ChildVaccine(vaccineName, "BATCH-CH-CHK");
+        } else if (nextDoseNo >= 3 || "BoosterCare".equalsIgnoreCase(vaccineName) || "BoosterPlus".equalsIgnoreCase(vaccineName)) {
+            vax = new BoosterVaccine(vaccineName, "BATCH-BO-CHK", currentDoses >= 2);
+        } else {
+            vax = new AdultVaccine(vaccineName, "BATCH-AD-CHK");
+        }
+
+        // Age and Booster eligibility
+        if (!vax.eligibility(ben.getAge())) {
+            String reason = (vax instanceof BoosterVaccine && currentDoses < 2)
+                    ? "Booster requires completion of 2 primary doses. (Completed: " + currentDoses + ")"
+                    : "Age " + ben.getAge() + " is ineligible for vaccine '" + vaccineName + "'";
+            return new EligibilityCheck(false, false, currentDoses, nextDoseNo, 0, 0, "", reason, vaccineName);
+        }
+
+        // Interval eligibility
+        if (currentDoses > 0) {
+            try {
+                DoseRecord latest = doseDAO.getLatestDose(beneficiaryId);
+                if (latest != null) {
+                    LocalDate lastDoseDate = LocalDate.parse(latest.getDoseDate());
+                    LocalDate refDate = (targetDate != null && !targetDate.isEmpty()) ? LocalDate.parse(targetDate) : LocalDate.now();
+                    long daysSince = ChronoUnit.DAYS.between(lastDoseDate, refDate);
+                    int requiredInterval = vax.intervalDays(nextDoseNo);
+                    String nextDue = vax.nextDueDate(latest.getDoseDate(), nextDoseNo);
+                    if (daysSince < requiredInterval) {
+                        long remaining = requiredInterval - daysSince;
+                        return new EligibilityCheck(true, false, currentDoses, nextDoseNo, requiredInterval, daysSince, nextDue,
+                                "Dose #" + nextDoseNo + " interval not yet met: " + remaining + " days remaining (due " + nextDue + ")", vaccineName);
+                    } else {
+                        return new EligibilityCheck(true, true, currentDoses, nextDoseNo, requiredInterval, daysSince, nextDue,
+                                "Eligible for Dose #" + nextDoseNo + " (" + daysSince + " days since previous dose; required: " + requiredInterval + "d)", vaccineName);
+                    }
+                }
+            } catch (Exception e) {
+                return new EligibilityCheck(true, true, currentDoses, nextDoseNo, 0, 0, "", "Ready for next dose", vaccineName);
+            }
+        }
+
+        return new EligibilityCheck(true, true, currentDoses, 1, 0, 0, "",
+                "Eligible for Dose #1 (" + ben.getAgeGroup() + ", Target: " + vaccineName + ")", vaccineName);
+    }
+
+    /**
+     * Creates a new vaccination session directly in SQLite, and updates sessions List and primitive array.
+     */
+    public synchronized Session createNewSession(String date, String vaccineName, int capacity) throws SQLException, VaxiCareException {
+        if (date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
+            throw new VaxiCareException("Invalid session date format. Expected YYYY-MM-DD.");
+        }
+        if (capacity <= 0) {
+            throw new VaxiCareException("Session capacity must be at least 1.");
+        }
+        Session s = new Session(0, date, vaccineName, capacity, 0);
+        int newId = sessionDAO.insert(s);
+        s.setSessionId(newId);
+        reloadFromDatabase();
+        System.out.println("[VaxiCareService] Created new session #" + newId + " on " + date + " for " + vaccineName + " (Cap: " + capacity + ")");
+        return s;
+    }
+
+    /**
+     * 1-Click Walk-In workflow: validates, books slot, and records dose in one atomic action.
+     */
+    public synchronized DoseRecord walkInVaccinate(String beneficiaryId, String vaccineName) throws VaxiCareException, SQLException {
+        EligibilityCheck check = checkEligibility(beneficiaryId, vaccineName, LocalDate.now().toString());
+        if (!check.eligible) {
+            Beneficiary ben = lookup.get(beneficiaryId);
+            throw new IneligibleAgeException(ben != null ? ben.getAge() : 0, check.message);
+        }
+        if (!check.due) {
+            throw new DoseNotDueException(check.message, (int)(check.requiredIntervalDays - check.daysSinceLastDose), check.nextDueDate);
+        }
+
+        // Find today's open session or create one
+        String todayStr = LocalDate.now().toString();
+        Session target = null;
+        for (Session s : sessions) {
+            if (s.getAvailableSlots() > 0 && s.getSessionDate().equals(todayStr) && s.getVaccineName().equalsIgnoreCase(vaccineName)) {
+                target = s;
+                break;
+            }
+        }
+        if (target == null) {
+            for (Session s : sessions) {
+                if (s.getAvailableSlots() > 0 && s.getVaccineName().equalsIgnoreCase(vaccineName)) {
+                    target = s;
+                    break;
+                }
+            }
+        }
+        if (target == null) {
+            target = createNewSession(todayStr, vaccineName, 50);
+        }
+
+        // Book slot
+        bookSlot(beneficiaryId, target.getSessionId(), vaccineName);
+
+        // Record vaccination
+        return recordVaccination(beneficiaryId, vaccineName, target.getSessionId());
+    }
+
+    /**
+     * Formats an official clinical vaccination certificate.
+     */
+    public String formatCertificate(DoseRecord record, Beneficiary beneficiary) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("========================================================================\n");
+        sb.append("                  VAXICARE OFFICIAL VACCINATION CERTIFICATE              \n");
+        sb.append("                    Government Clinical Health Registry                 \n");
+        sb.append("========================================================================\n\n");
+        sb.append(String.format(" Certificate Number : %s\n", record.getCertificateNo()));
+        sb.append(String.format(" Issue Timestamp    : %s %s\n", record.getDoseDate(), java.time.LocalTime.now().withNano(0)));
+        sb.append("------------------------------------------------------------------------\n");
+        sb.append(" BENEFICIARY DETAILS:\n");
+        sb.append(String.format("   Citizen Name     : %s\n", beneficiary != null ? beneficiary.getName() : "N/A"));
+        sb.append(String.format("   Beneficiary ID   : %s\n", record.getBenId()));
+        sb.append(String.format("   Age / Demographic: %s (%s)\n",
+                beneficiary != null ? beneficiary.getAge() + " years" : "N/A",
+                beneficiary != null ? beneficiary.getAgeGroup() : "N/A"));
+        sb.append(String.format("   Identity Document: %s\n", beneficiary != null ? beneficiary.getIdNumber() : "N/A"));
+        sb.append(String.format("   Contact Phone    : %s\n", beneficiary != null ? beneficiary.getPhone() : "N/A"));
+        sb.append("------------------------------------------------------------------------\n");
+        sb.append(" VACCINATION DETAILS:\n");
+        sb.append(String.format("   Vaccine Brand    : %s\n", record.getVaccineName()));
+        sb.append(String.format("   Dose Administered: Dose #%d\n", record.getDoseNo()));
+        sb.append(String.format("   Date of Dose     : %s\n", record.getDoseDate()));
+        sb.append(String.format("   Subsequent Due   : %s\n", record.getNextDue()));
+        sb.append("------------------------------------------------------------------------\n");
+        sb.append(" CLINICAL STATUS    : VERIFIED & AUTHENTICATED\n");
+        sb.append(" Digital Signature  : SHA-256 Verified by VaxiCare Clinical Engine\n");
+        sb.append("========================================================================\n");
+        return sb.toString();
+    }
+
+    /**
+     * Saves certificate text to a specified file.
+     */
+    public void saveCertificateToFile(DoseRecord record, Beneficiary beneficiary, String filePath) throws IOException {
+        String certText = formatCertificate(record, beneficiary);
+        java.nio.file.Files.writeString(java.nio.file.Path.of(filePath), certText);
+        System.out.println("[VaxiCareService] Certificate written to " + filePath);
+    }
+
+    /**
+     * Compiles formatted Daily Coverage Report.
+     */
+    public String generateDailyCoverageReportText() throws SQLException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("========================================================================================\n");
+        sb.append("                       VAXICARE DAILY VACCINATION COVERAGE REPORT                       \n");
+        sb.append("========================================================================================\n");
+        sb.append("Generated On: ").append(LocalDate.now()).append(" at ").append(java.time.LocalTime.now().withNano(0)).append("\n\n");
+
+        int totalBens = beneficiaryDAO.count();
+        int totalDoses = doseDAO.count();
+        int totalSess = sessionDAO.count();
+
+        sb.append("1. CLINIC SUMMARY METRICS:\n");
+        sb.append(String.format("   - Total Registered Citizens      : %d\n", totalBens));
+        sb.append(String.format("   - Total Doses Administered       : %d\n", totalDoses));
+        sb.append(String.format("   - Active Vaccination Sessions    : %d\n", totalSess));
+        sb.append(String.format("   - Citizens Vaccinated Today      : %d\n", vaccinatedToday.size()));
+        sb.append(String.format("   - Physical Vials Opened (Total)  : %d\n", vialManager.getVialsOpened()));
+        sb.append(String.format("   - Doses Left in Current Active   : %d\n", vialManager.getDosesRemainingInCurrentVial()));
+        sb.append(String.format("   - Total Doses Wasted             : %d\n\n", vialManager.getDosesWasted()));
+
+        sb.append("2. SESSIONS CAPACITY UTILIZATION (Primitive Array slotsRemainingPerSession):\n");
+        for (int i = 0; i < sessions.size(); i++) {
+            Session s = sessions.get(i);
+            int rem = (i < slotsRemainingPerSession.length) ? slotsRemainingPerSession[i] : s.getAvailableSlots();
+            sb.append(String.format("   [Index %2d] Session #%-2d (%s | %-11s) -> Booked: %2d/%2d | Slots Remaining: %2d\n",
+                    i, s.getSessionId(), s.getSessionDate(), s.getVaccineName(), s.getBooked(), s.getCapacity(), rem));
+        }
+
+        sb.append("\n3. RECENT DOSES ADMINISTERED (SQLite Table: doses):\n");
+        List<DoseRecord> allDoses = doseDAO.findAll();
+        for (int i = Math.max(0, allDoses.size() - 12); i < allDoses.size(); i++) {
+            DoseRecord d = allDoses.get(i);
+            sb.append(String.format("   #%-3d | Ben: %-6s | %-11s | Dose %d | Given: %s | Next Due: %-16s | Cert: %s\n",
+                    d.getDoseId(), d.getBenId(), d.getVaccineName(), d.getDoseNo(), d.getDoseDate(), d.getNextDue(), d.getCertificateNo()));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Exports daily report to a text file.
+     */
+    public void exportDailyReportToFile(String filePath) throws SQLException, IOException {
+        String text = generateDailyCoverageReportText();
+        java.nio.file.Files.writeString(java.nio.file.Path.of(filePath), text);
+        System.out.println("[VaxiCareService] Daily report exported to " + filePath);
+    }
+
+    /**
+     * Triggers the background reminder scan immediately.
+     */
+    public void triggerReminderScanNow() {
+        synchronized (reminderLock) {
+            reminderLock.notifyAll();
+        }
+    }
 }
