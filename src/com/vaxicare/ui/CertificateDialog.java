@@ -39,7 +39,11 @@ public class CertificateDialog extends Dialog implements ActionListener {
     private Label lblStatus;
 
     public CertificateDialog(Frame parent, DoseRecord record, Beneficiary beneficiary, VaxiCareService service) {
-        super(parent, "VaxiCare Official Clinical Certificate - " + record.getCertificateNo(), true);
+        this(parent, record, beneficiary, service, true);
+    }
+
+    public CertificateDialog(Frame parent, DoseRecord record, Beneficiary beneficiary, VaxiCareService service, boolean modal) {
+        super(parent, "VaxiCare Official Clinical Certificate - " + record.getCertificateNo(), modal);
         this.record = record;
         this.beneficiary = beneficiary;
         this.service = service;
