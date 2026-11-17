@@ -124,7 +124,7 @@ public class VaxiCareFrame extends Frame implements ActionListener, ItemListener
     }
 
     private void initializeUI() {
-        setSize(960, 680);
+        setSize(1080, 720);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
         setBackground(new Color(240, 244, 248));
@@ -138,10 +138,10 @@ public class VaxiCareFrame extends Frame implements ActionListener, ItemListener
         headerTitle.setForeground(Color.WHITE);
         topPanel.add(headerTitle, BorderLayout.NORTH);
 
-        Panel navPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        Panel navPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 12, 8));
         navPanel.setBackground(new Color(38, 67, 115));
 
-        btnNavReg = createNavButton("1. Beneficiary Registration");
+        btnNavReg = createNavButton("1. Registration");
         btnNavSlots = createNavButton("2. Slot Booking");
         btnNavVacc = createNavButton("3. Vaccination & Vials (Ctrl+V)");
         btnNavReports = createNavButton("4. Reports & Logs (F4)");
@@ -880,7 +880,37 @@ public class VaxiCareFrame extends Frame implements ActionListener, ItemListener
         }
     }
 
-    private void viewRemindersReport() {
+    public void showRegistrationTab() {
+        cardLayout.show(cardsPanel, CARD_REGISTRATION);
+    }
+
+    public void showSlotsTab() {
+        cardLayout.show(cardsPanel, CARD_SLOTS);
+    }
+
+    public void showVaccinationTab() {
+        cardLayout.show(cardsPanel, CARD_VACCINATION);
+    }
+
+    public void showReportsTab() {
+        cardLayout.show(cardsPanel, CARD_REPORTS);
+    }
+
+    public void selectBeneficiaryIndex(int index) {
+        if (benAwtList.getItemCount() > index) {
+            benAwtList.select(index);
+            handleBeneficiaryListSelection();
+        }
+    }
+
+    public void selectSessionIndex(int index) {
+        if (sessionAwtList.getItemCount() > index) {
+            sessionAwtList.select(index);
+            handleSessionListSelection();
+        }
+    }
+
+    public void viewRemindersReport() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== BENEFICIARIES SCHEDULED FOR NEXT DOSE TOMORROW ===\n");
         sb.append("Reference Date: ").append(LocalDate.now().plusDays(1)).append("\n\n");
@@ -896,7 +926,7 @@ public class VaxiCareFrame extends Frame implements ActionListener, ItemListener
         cardLayout.show(cardsPanel, CARD_REPORTS);
     }
 
-    private void viewThreadsReport() {
+    public void viewThreadsReport() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== MULTITHREADING AUDIT & THREAD STATE MONITOR ===\n\n");
         List<String> logs = service.getReminderTask().getReminderLogs();
@@ -911,7 +941,7 @@ public class VaxiCareFrame extends Frame implements ActionListener, ItemListener
         cardLayout.show(cardsPanel, CARD_REPORTS);
     }
 
-    private void viewVialLogsReport() {
+    public void viewVialLogsReport() {
         StringBuilder sb = new StringBuilder();
         sb.append("=== VIAL CONSUMPTION & AUDIT LOGS (Vector) ===\n\n");
         List<String> logs = service.getVialLogs();
